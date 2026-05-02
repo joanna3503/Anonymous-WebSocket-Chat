@@ -39,14 +39,14 @@ The application strictly separates the static frontend from the cloud-native bac
 ## Repository Structure
 ```text
 .
-¢u¢w¢w webui/                          # Frontend (React + Vite + TypeScript)
-¢u¢w¢w lambda/                         # Backend Python Lambda functions
-¢x   ¢u¢w¢w connect/                    # $connect route handler
-¢x   ¢u¢w¢w disconnect/                 # $disconnect route handler
-¢x   ¢|¢w¢w send_message/               # sendMessage route handler
-¢u¢w¢w documents/                      # Architecture diagrams and specifications
-¢u¢w¢w template.yaml                   # AWS SAM infrastructure definition
-¢|¢w¢w README.md
+|-- webui/                          # Frontend (React + Vite + TypeScript)
+|-- lambda/                         # Backend Python Lambda functions
+|   |-- connect/                    # $connect route handler
+|   |-- disconnect/                 # $disconnect route handler
+|   `-- send_message/               # sendMessage route handler
+|-- documents/                      # Architecture diagrams and specifications
+|-- template.yaml                   # AWS SAM infrastructure definition
+`-- README.md
 ```
 
 ## Local Development & Deployment
