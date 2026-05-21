@@ -31,7 +31,6 @@
 |-- samconfig.toml      # SAM 部署設定檔
 |-- .gitignore          # 忽略清單 (已包含 .aws-sam/)
 `-- README.md
-
 ```
 
 ---
