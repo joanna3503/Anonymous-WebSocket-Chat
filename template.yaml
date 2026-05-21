@@ -95,9 +95,7 @@ Resources:
       FunctionName: chat-connect
       Handler: connect.handler
       CodeUri: lambda/connect/
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref ConnectionsTable
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
 
   DisconnectFunction:
     Type: AWS::Serverless::Function
@@ -105,9 +103,7 @@ Resources:
       FunctionName: chat-disconnect
       Handler: disconnect.handler
       CodeUri: lambda/disconnect/
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref ConnectionsTable
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
 
   SendMessageFunction:
     Type: AWS::Serverless::Function
@@ -115,14 +111,7 @@ Resources:
       FunctionName: chat-send-message
       Handler: send_message.handler
       CodeUri: lambda/send_message/
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref ConnectionsTable
-        - Statement:
-            - Effect: Allow
-              Action:
-                - "execute-api:ManageConnections"
-              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ChatWebSocketApi}/*"
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
 
   # --- Lambda Permissions (allow API Gateway to invoke) ---
   ConnectPermission:

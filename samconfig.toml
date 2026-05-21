@@ -4,9 +4,9 @@ version = 0.1
 stack_name = "anonymous-chat"
 resolve_s3 = true
 s3_prefix = "anonymous-chat"
-region = "us-west-2"
 capabilities = "CAPABILITY_IAM"
 image_repositories = []
+confirm_changeset = true
 
 [default.global.parameters]
 region = "us-west-2"
