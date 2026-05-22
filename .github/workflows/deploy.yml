@@ -1,31 +1,35 @@
 # .github/workflows/deploy.yml
-name: Deploy to GitHub Pages
+name: Deploy Frontend to GitHub Pages
 
 on:
   push:
     branches: [main]
-    paths: ['webui/**'] # 只有當 webui 資料夾有變動時才觸發
+    paths: ['frontend/**']
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # 允許 GitHub Actions 將編譯後的檔案寫入 gh-pages 分支
+      contents: write # Allow writing to gh-pages (GitHub Pages) branch
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
       
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
           
       - name: Install dependencies and build
         run: |
-          cd webui
+          cd frontend
           npm ci
           npm run build
           
-      - name: Deploy
+      - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./webui/dist
+          publish_dir: ./frontend/dist
