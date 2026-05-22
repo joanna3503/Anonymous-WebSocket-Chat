@@ -8,14 +8,56 @@
 
 ## 系統架構
 
-![System Architecture](docs/anonymous_chat_architecture.png)
+應用程式架構採無伺服器（Serverless）技術，呈現高度解耦設計，並使用 Mermaid 繪製 AWS 風格架構圖：
 
-應用程式採取極度解耦的設計：
+```mermaid
+flowchart LR
+    %% Defining Nodes with AWS-like icons/shapes representation
+    Client([Client\nBrowser / React])
+    APIGW[[AWS API Gateway\nWebSocket API]]
+    L_Conn{{AWS Lambda\nconnect}}
+    L_Disc{{AWS Lambda\ndisconnect}}
+    L_Send{{AWS Lambda\nsend_message}}
+    L_Read{{AWS Lambda\nread_message}}
+    DDB[(Amazon DynamoDB\nConnections Table)]
 
-1. **Frontend:** 基於 React + Vite + TypeScript，運行於 GitHub Pages。透過 `wss://` 通訊協定與後端互動。
-2. **API Gateway:** 原生支援 WebSocket 協議，負責處理 `$connect`、`$disconnect` 與 `sendMessage` 等路由。
-3. **AWS Lambda:** 三個 Python 3.12 函數負責處理業務邏輯與訊息廣播。
-4. **Amazon DynamoDB:** 作為輕量級連線池，暫存 `connectionId`，不進行長期訊息儲存以確保隱私與效能。
+    %% Defining Flows
+    Client -- "wss://" --> APIGW
+
+    APIGW -- "$connect" --> L_Conn
+    APIGW -- "$disconnect" --> L_Disc
+    APIGW -- "sendMessage" --> L_Send
+    APIGW -- "markAsRead" --> L_Read
+
+    L_Conn -->|PutItem| DDB
+    L_Disc -->|DeleteItem| DDB
+    L_Send -->|GetItem / Scan| DDB
+    L_Read -->|GetItem / Scan| DDB
+
+    %% Broadcast flows (dashed lines indicating fan-out)
+    L_Conn -.->|Broadcoast: Joined| APIGW
+    L_Disc -.->|Broadcoast: Left| APIGW
+    L_Send -.->|Broadcoast: Message| APIGW
+    L_Read -.->|Broadcoast: Receipt| APIGW
+
+    %% Styling (approximating AWS colors: Purple=APIGW, Orange=Lambda, Blue=DynamoDB)
+    classDef apigw fill:#A166FF,stroke:#fff,stroke-width:1px,color:#fff;
+    classDef lambda fill:#FF9900,stroke:#fff,stroke-width:1px,color:#fff;
+    classDef ddb fill:#205B9F,stroke:#fff,stroke-width:1px,color:#fff;
+    classDef client fill:#333,stroke:#fff,stroke-width:1px,color:#fff;
+
+    class APIGW apigw;
+    class L_Conn,L_Disc,L_Send,L_Read lambda;
+    class DDB ddb;
+    class Client client;
+```
+
+系統核心組件：
+
+1. **Frontend:** 基於 React 託管於 GitHub Pages。負責顯示 UI，透過 `wss://` 通訊協定與後端互動。
+2. **API Gateway:** 作為前端連線入口與訊息總機。根據 RouteKey（$connect, $disconnect, ...）將請求分發給對應的 Lambda。
+3. **AWS Lambda:** 四個無伺服器函數處理業務邏輯。負責寫入連線資訊、廣播聊天訊息、廣播已讀回執及廣播使用者進出事件。
+4. **Amazon DynamoDB:** 只作為連線池儲存當前在線者的 connectionId 與代號。採無狀態設計，不留存聊天紀錄以確保隱私。
 
 ## 📁 專案結構
 
@@ -24,9 +66,10 @@
 ├── docs/               # 專案架構圖、API 規格與技術文件
 ├── frontend/           # 前端應用 (React + Vite + TypeScript)
 ├── lambda/             # 後端 Lambda 程式碼
-│   ├── connect/        # 連線處理邏輯
-│   ├── disconnect/     # 中斷連線處理邏輯
-│   └── send_message/   # 訊息發送處理邏輯
+│   ├── connect/        # 連線處理邏輯與入室廣播
+│   ├── disconnect/     # 中斷連線處理邏輯與退室廣播
+│   ├── send_message/   # 訊息發送處理邏輯
+│   └── read_message/   # 已讀回執處理邏輯
 ├── template.yaml       # AWS SAM 基礎設施藍圖
 ├── samconfig.toml      # SAM 部署設定檔
 ├── .gitignore          # 忽略清單 (已包含 .aws-sam/)
