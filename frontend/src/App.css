@@ -28,7 +28,9 @@ body {
   font-family: 'Public Sans', sans-serif;
   background-color: var(--bg-slate-50);
   color: var(--text-slate-900);
+  /* Use dynamic viewport height (dvh) to accommodate mobile toolbars and keyboards */
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -42,7 +44,9 @@ body {
 .app-layout {
   display: flex;
   flex-direction: column;
+  /* Use dynamic viewport height (dvh) for accurate mobile layout */
   height: 100vh;
+  height: 100dvh;
   max-width: 900px;
   margin: 0 auto;
   background-color: #ffffff;
