@@ -221,7 +221,7 @@ function App() {
                 <span>{timeString}</span>
                 {/* Only show read count for own messages that have been read */}
                 {isOwnMessage && readCount > 0 && (
-                  <span>已讀 {readCount}</span>
+                  <span>Read {readCount}</span>
                 )}
               </div>
             </div>
