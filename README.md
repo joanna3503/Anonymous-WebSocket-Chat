@@ -21,16 +21,16 @@
 
 ```text
 .
-|-- docs/               # 專案架構圖、API 規格與技術文件
-|-- frontend/           # 前端應用 (React + Vite + TypeScript)
-|-- lambda/             # 後端 Lambda 程式碼
-|   |-- connect/        # 連線處理邏輯
-|   |-- disconnect/     # 中斷連線處理邏輯
-|   `-- send_message/   # 訊息發送處理邏輯
-|-- template.yaml       # AWS SAM 基礎設施藍圖
-|-- samconfig.toml      # SAM 部署設定檔
-|-- .gitignore          # 忽略清單 (已包含 .aws-sam/)
-`-- README.md
+├── docs/               # 專案架構圖、API 規格與技術文件
+├── frontend/           # 前端應用 (React + Vite + TypeScript)
+├── lambda/             # 後端 Lambda 程式碼
+│   ├── connect/        # 連線處理邏輯
+│   ├── disconnect/     # 中斷連線處理邏輯
+│   └── send_message/   # 訊息發送處理邏輯
+├── template.yaml       # AWS SAM 基礎設施藍圖
+├── samconfig.toml      # SAM 部署設定檔
+├── .gitignore          # 忽略清單 (已包含 .aws-sam/)
+└── README.md
 ```
 
 ---
