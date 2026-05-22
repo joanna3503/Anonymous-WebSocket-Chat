@@ -58,6 +58,14 @@ Resources:
       AuthorizationType: NONE
       Target: !Sub "integrations/${SendMessageIntegration}"
 
+  MarkAsReadRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref ChatWebSocketApi
+      RouteKey: "markAsRead"
+      AuthorizationType: NONE
+      Target: !Sub "integrations/${MarkAsReadIntegration}"
+
   # --- Integrations ---
   ConnectIntegration:
     Type: AWS::ApiGatewayV2::Integration
@@ -79,6 +87,13 @@ Resources:
       ApiId: !Ref ChatWebSocketApi
       IntegrationType: AWS_PROXY
       IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SendMessageFunction.Arn}/invocations"
+
+  MarkAsReadIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref ChatWebSocketApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ReadMessageFunction.Arn}/invocations"
 
   # --- Stage ---
   ProdStage:
@@ -113,6 +128,14 @@ Resources:
       CodeUri: lambda/send_message/
       Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
 
+  ReadMessageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: chat-read-message
+      Handler: read_message.handler
+      CodeUri: lambda/read_message/
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
+
   # --- Lambda Permissions (allow API Gateway to invoke) ---
   ConnectPermission:
     Type: AWS::Lambda::Permission
@@ -138,6 +161,14 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ChatWebSocketApi}/*/sendMessage"
 
+  ReadMessagePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ReadMessageFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ChatWebSocketApi}/*/markAsRead"
+  
 Outputs:
   WebSocketUrl:
     Description: "WebSocket API endpoint"
