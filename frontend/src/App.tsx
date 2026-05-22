@@ -4,11 +4,13 @@ import './App.css';
 
 // Define message types based on API specification
 interface ChatMessage {
-  type: 'message' | 'system';
+  type: 'message' | 'system' | 'read_receipt';
+  messageId?: string;
   callsign: string;
   text?: string;
   event?: 'user_joined' | 'user_left';
   timestamp: string;
+  readBy?: string[];
 }
 
 const WS_ENDPOINT = import.meta.env.VITE_WS_ENDPOINT || "";
@@ -48,8 +50,29 @@ function App() {
 
     ws.current.onmessage = (event) => {
       try {
-        const data: ChatMessage = JSON.parse(event.data);
-        setMessages((prev) => [...prev, data]);
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'message' || data.type === 'system') {
+          const incomingMessage: ChatMessage = { ...data, readBy: [] };
+          setMessages((prev) => [...prev, incomingMessage]);
+
+          if (data.type === 'message' && data.callsign !== callsign) {
+            ws.current?.send(JSON.stringify({
+              action: 'markAsRead',
+              messageId: data.messageId
+            }));
+          }
+        } 
+        else if (data.type === 'read_receipt') {
+          setMessages((prev) => 
+            prev.map(msg => {
+              if (msg.messageId === data.messageId && msg.callsign !== data.reader && !msg.readBy?.includes(data.reader)) {
+                return { ...msg, readBy: [...(msg.readBy || []), data.reader] };
+              }
+              return msg;
+            })
+          );
+        }
       } catch (err) {
         console.error('Failed to parse message', err);
       }
@@ -170,6 +193,14 @@ function App() {
           }
 
           const isOwnMessage = msg.callsign === callsign;
+          
+          // Transform timestamp to "HH:mm" format; if timestamp is missing, use current time
+          const timeString = msg.timestamp 
+            ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) 
+            : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+          
+          const readCount = msg.readBy ? msg.readBy.length : 0; 
+
           return (
             <div key={idx} className={`message-wrapper ${isOwnMessage ? 'own' : 'other'}`}>
               <div className="message-sender">
@@ -177,6 +208,21 @@ function App() {
               </div>
               <div className="message-bubble">
                 {msg.text}
+              </div>
+              <div style={{ 
+                fontSize: '10px', 
+                color: 'var(--text-slate-400)', 
+                marginTop: '4px', 
+                textAlign: isOwnMessage ? 'right' : 'left',
+                display: 'flex',
+                justifyContent: isOwnMessage ? 'flex-end' : 'flex-start',
+                gap: '8px'
+              }}>
+                <span>{timeString}</span>
+                {/* Only show read count for own messages that have been read */}
+                {isOwnMessage && readCount > 0 && (
+                  <span>已讀 {readCount}</span>
+                )}
               </div>
             </div>
           );
