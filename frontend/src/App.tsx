@@ -28,7 +28,7 @@ function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleJoin = (e: React.FormEvent) => {
+  const handleJoin = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!callsign.trim() || callsign.length > 20) {
       alert('Callsign must be 1-20 characters.');
@@ -65,7 +65,7 @@ function App() {
     };
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!inputText.trim() || !ws.current || ws.current.readyState !== WebSocket.OPEN) return;
 
