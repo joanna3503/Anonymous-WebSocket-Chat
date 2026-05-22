@@ -13,6 +13,12 @@ interface ChatMessage {
   readBy?: string[];
 }
 
+interface AIMessage {
+  role: 'user' | 'assistant' | 'error';
+  text: string;
+  timestamp: string;
+}
+
 const WS_ENDPOINT = import.meta.env.VITE_WS_ENDPOINT || "";
 
 function App() {
@@ -20,6 +26,10 @@ function App() {
   const [callsign, setCallsign] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiInputText, setAiInputText] = useState('');
+  const [aiMessages, setAiMessages] = useState<AIMessage[]>([]);
+  const [aiThinking, setAiThinking] = useState(false);
   const [status, setStatus] = useState<'Disconnected' | 'Connecting' | 'Connected'>('Disconnected');
   
   const ws = useRef<WebSocket | null>(null);
@@ -52,7 +62,19 @@ function App() {
       try {
         const data = JSON.parse(event.data);
 
-        if (data.type === 'message' || data.type === 'system') {
+        if (data.type === 'ai_message' || data.type === 'ai_error') {
+          setAiThinking(false);
+          setAiOpen(true);
+          setAiMessages((prev) => [
+            ...prev,
+            {
+              role: data.type === 'ai_error' ? 'error' : 'assistant',
+              text: data.text || 'AI did not return a response.',
+              timestamp: data.timestamp || new Date().toISOString(),
+            },
+          ]);
+        }
+        else if (data.type === 'message' || data.type === 'system') {
           const incomingMessage: ChatMessage = { ...data, readBy: [] };
           setMessages((prev) => [...prev, incomingMessage]);
 
@@ -84,6 +106,7 @@ function App() {
 
     ws.current.onerror = (error) => {
       console.error('WebSocket error:', error);
+      setAiThinking(false);
       setStatus('Disconnected');
     };
   };
@@ -101,12 +124,37 @@ function App() {
     setInputText('');
   };
 
+  const handleSendAIMessage = (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const text = aiInputText.trim();
+    if (!text || !ws.current || ws.current.readyState !== WebSocket.OPEN || aiThinking) return;
+
+    setAiMessages((prev) => [
+      ...prev,
+      {
+        role: 'user',
+        text,
+        timestamp: new Date().toISOString(),
+      },
+    ]);
+
+    ws.current.send(JSON.stringify({
+      action: 'askAI',
+      text,
+    }));
+    setAiInputText('');
+    setAiThinking(true);
+  };
+
   const handleDisconnect = () => {
     if (ws.current) {
       ws.current.close();
     }
     setScreen('join');
     setMessages([]);
+    setAiMessages([]);
+    setAiOpen(false);
+    setAiThinking(false);
     setCallsign('');
   };
 
@@ -233,6 +281,9 @@ function App() {
       {/* Input Area (Fixed to bottom) */}
       <footer className="input-area">
         <form className="input-form" onSubmit={handleSendMessage}>
+          <button className={`btn-ai-toggle ${aiOpen ? 'active' : ''}`} type="button" onClick={() => setAiOpen((open) => !open)} title="Private AI chat">
+            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>smart_toy</span>
+          </button>
           <input
             className="input-field"
             type="text"
@@ -249,6 +300,61 @@ function App() {
           </button>
         </form>
       </footer>
+
+      {aiOpen && (
+        <aside className="ai-panel" aria-label="Private AI chat">
+          <div className="ai-panel-header">
+            <div>
+              <div className="ai-panel-title">
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>smart_toy</span>
+                Private AI
+              </div>
+              <div className="ai-panel-subtitle">Only you can see this conversation</div>
+            </div>
+            <button className="btn-icon" type="button" onClick={() => setAiOpen(false)} title="Close AI chat">
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+            </button>
+          </div>
+
+          <div className="ai-messages custom-scrollbar">
+            {aiMessages.length === 0 && (
+              <div className="ai-empty">
+                Ask the AI anything while staying in the public chat.
+              </div>
+            )}
+            {aiMessages.map((msg, idx) => (
+              <div key={idx} className={`ai-message ${msg.role}`}>
+                <div className="ai-message-label">
+                  {msg.role === 'user' ? 'You' : msg.role === 'error' ? 'AI unavailable' : 'AI Assistant'}
+                </div>
+                <div className="ai-message-bubble">{msg.text}</div>
+              </div>
+            ))}
+            {aiThinking && (
+              <div className="ai-message assistant">
+                <div className="ai-message-label">AI Assistant</div>
+                <div className="ai-message-bubble ai-thinking">Thinking...</div>
+              </div>
+            )}
+          </div>
+
+          <form className="ai-input-form" onSubmit={handleSendAIMessage}>
+            <input
+              className="input-field"
+              type="text"
+              placeholder="Ask AI privately..."
+              value={aiInputText}
+              onChange={(e) => setAiInputText(e.target.value)}
+              maxLength={1000}
+              disabled={aiThinking}
+              autoComplete="off"
+            />
+            <button className="btn-primary" type="submit" disabled={!aiInputText.trim() || aiThinking}>
+              <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>send</span>
+            </button>
+          </form>
+        </aside>
+      )}
     </div>
   );
 }
