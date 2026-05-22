@@ -120,7 +120,8 @@ body {
   padding: 12px 16px;
   border: 1px solid var(--border-slate-200);
   border-radius: 12px;
-  font-size: 0.875rem;
+  /* Force 16px to prevent iOS Safari auto-zoom on focus */
+  font-size: 16px;
   outline: none;
   box-sizing: border-box;
   transition: border-color 0.2s;
