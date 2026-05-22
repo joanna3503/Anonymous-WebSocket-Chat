@@ -2,6 +2,17 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Anonymous WebSocket Chat - Serverless Backend
 
+Parameters:
+  OpenAIApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: OpenAI API key used by the private AI chat Lambda.
+  OpenAIModel:
+    Type: String
+    Default: gpt-4.1-mini
+    Description: OpenAI model ID used by the private AI chat Lambda.
+
 Globals:
   Function:
     Runtime: python3.12
@@ -10,7 +21,8 @@ Globals:
     Environment:
       Variables:
         TABLE_NAME: !Ref ConnectionsTable
-        AI_MODEL_ID: amazon.nova-lite-v1:0
+        OPENAI_API_KEY: !Ref OpenAIApiKey
+        OPENAI_MODEL: !Ref OpenAIModel
         AI_SYSTEM_PROMPT: "You are a friendly, concise AI assistant in a private anonymous chat."
 
 Resources:

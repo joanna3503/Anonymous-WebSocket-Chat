@@ -1,5 +1,7 @@
 import json
 import os
+import urllib.error
+import urllib.request
 from datetime import datetime
 
 import boto3
@@ -8,7 +10,8 @@ import boto3
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.environ["TABLE_NAME"])
 
-AI_MODEL_ID = os.environ.get("AI_MODEL_ID", "amazon.nova-lite-v1:0")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4.1-mini")
 AI_SYSTEM_PROMPT = os.environ.get(
     "AI_SYSTEM_PROMPT",
     "You are a friendly, concise assistant inside a private anonymous chat. "
@@ -25,28 +28,49 @@ def _send_to_client(domain_name, stage, connection_id, payload):
     )
 
 
-def _ask_bedrock(user_text):
-    bedrock = boto3.client("bedrock-runtime")
-    response = bedrock.converse(
-        modelId=AI_MODEL_ID,
-        system=[{"text": AI_SYSTEM_PROMPT}],
-        messages=[
-            {
-                "role": "user",
-                "content": [{"text": user_text}],
-            }
-        ],
-        inferenceConfig={
-            "maxTokens": 600,
-            "temperature": 0.6,
+def _extract_openai_text(response_body):
+    if response_body.get("output_text"):
+        return response_body["output_text"].strip()
+
+    text_parts = []
+    for item in response_body.get("output", []):
+        for content in item.get("content", []):
+            text = content.get("text")
+            if text:
+                text_parts.append(text)
+
+    return "\n".join(text_parts).strip()
+
+
+def _ask_openai(user_text):
+    if not OPENAI_API_KEY:
+        raise RuntimeError("OPENAI_API_KEY is not configured")
+
+    request_body = {
+        "model": OPENAI_MODEL,
+        "instructions": AI_SYSTEM_PROMPT,
+        "input": user_text,
+        "max_output_tokens": 600,
+    }
+
+    request = urllib.request.Request(
+        "https://api.openai.com/v1/responses",
+        data=json.dumps(request_body).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {OPENAI_API_KEY}",
+            "Content-Type": "application/json",
         },
+        method="POST",
     )
 
-    output = response.get("output", {})
-    message = output.get("message", {})
-    content = message.get("content", [])
-    text_parts = [part.get("text", "") for part in content if part.get("text")]
-    return "\n".join(text_parts).strip() or "I could not generate a response."
+    try:
+        with urllib.request.urlopen(request, timeout=25) as response:
+            response_body = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"OpenAI API error {e.code}: {error_body}") from e
+
+    return _extract_openai_text(response_body) or "I could not generate a response."
 
 
 def handler(event, context):
@@ -70,7 +94,7 @@ def handler(event, context):
         if not sender:
             return {"statusCode": 400, "body": "Unknown sender"}
 
-        reply_text = _ask_bedrock(text)
+        reply_text = _ask_openai(text)
         payload = {
             "type": "ai_message",
             "callsign": "AI Assistant",
@@ -86,9 +110,8 @@ def handler(event, context):
             "type": "ai_error",
             "callsign": "AI Assistant",
             "text": (
-                "AI is not available right now. Check that Amazon Bedrock model "
-                "access is enabled in your Learner Lab region and that LabRole "
-                "can call bedrock-runtime."
+                "AI is not available right now. Check that OPENAI_API_KEY is "
+                "configured for the Lambda function and that the OpenAI model is available."
             ),
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
