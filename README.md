@@ -1,8 +1,8 @@
 # Anonymous WebSocket Chat
 
-![React](https://img.shields.io/badge/Frontend-React-blue)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
-![AWS](https://img.shields.io/badge/AWS-Serverless-orange)
+![React](https://img.shields.io/badge/React-19.2.5-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-6.0.2-3178C6?logo=typescript&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-Serverless-FF9900?logo=amazonaws&logoColor=white)
 
 這是一個基於 **Serverless Architecture** 的即時匿名聊天系統，採用前後端分離架構：前端為 React 應用，後端則完全運行於 AWS Lambda 與 DynamoDB 之上，無需管理伺服器。
 
