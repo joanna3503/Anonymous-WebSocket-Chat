@@ -3,15 +3,15 @@ Transform: AWS::Serverless-2016-10-31
 Description: Anonymous WebSocket Chat - Serverless Backend
 
 Parameters:
-  OpenAIApiKey:
+  GeminiApiKey:
     Type: String
     NoEcho: true
     Default: ""
-    Description: OpenAI API key used by the private AI chat Lambda.
-  OpenAIModel:
+    Description: Gemini API key used by the private AI chat Lambda.
+  GeminiModel:
     Type: String
-    Default: gpt-4.1-mini
-    Description: OpenAI model ID used by the private AI chat Lambda.
+    Default: gemini-2.5-flash-lite
+    Description: Gemini model ID used by the private AI chat Lambda.
 
 Globals:
   Function:
@@ -21,8 +21,8 @@ Globals:
     Environment:
       Variables:
         TABLE_NAME: !Ref ConnectionsTable
-        OPENAI_API_KEY: !Ref OpenAIApiKey
-        OPENAI_MODEL: !Ref OpenAIModel
+        GEMINI_API_KEY: !Ref GeminiApiKey
+        GEMINI_MODEL: !Ref GeminiModel
         AI_SYSTEM_PROMPT: "You are a friendly, concise AI assistant in a private anonymous chat."
 
 Resources:

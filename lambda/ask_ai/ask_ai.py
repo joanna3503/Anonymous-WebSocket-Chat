@@ -10,8 +10,8 @@ import boto3
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.environ["TABLE_NAME"])
 
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4.1-mini")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
 AI_SYSTEM_PROMPT = os.environ.get(
     "AI_SYSTEM_PROMPT",
     "You are a friendly, concise assistant inside a private anonymous chat. "
@@ -28,36 +28,46 @@ def _send_to_client(domain_name, stage, connection_id, payload):
     )
 
 
-def _extract_openai_text(response_body):
-    if response_body.get("output_text"):
-        return response_body["output_text"].strip()
-
+def _extract_gemini_text(response_body):
     text_parts = []
-    for item in response_body.get("output", []):
-        for content in item.get("content", []):
-            text = content.get("text")
+    for candidate in response_body.get("candidates", []):
+        content = candidate.get("content", {})
+        for part in content.get("parts", []):
+            text = part.get("text")
             if text:
                 text_parts.append(text)
 
     return "\n".join(text_parts).strip()
 
 
-def _ask_openai(user_text):
-    if not OPENAI_API_KEY:
-        raise RuntimeError("OPENAI_API_KEY is not configured")
+def _ask_gemini(user_text):
+    if not GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY is not configured")
 
     request_body = {
-        "model": OPENAI_MODEL,
-        "instructions": AI_SYSTEM_PROMPT,
-        "input": user_text,
-        "max_output_tokens": 600,
+        "systemInstruction": {
+            "parts": [{"text": AI_SYSTEM_PROMPT}]
+        },
+        "contents": [
+            {
+                "role": "user",
+                "parts": [{"text": user_text}],
+            }
+        ],
+        "generationConfig": {
+            "maxOutputTokens": 600,
+            "temperature": 0.6,
+        },
     }
 
+    url = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
+    )
     request = urllib.request.Request(
-        "https://api.openai.com/v1/responses",
+        url,
         data=json.dumps(request_body).encode("utf-8"),
         headers={
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
             "Content-Type": "application/json",
         },
         method="POST",
@@ -68,9 +78,9 @@ def _ask_openai(user_text):
             response_body = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         error_body = e.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"OpenAI API error {e.code}: {error_body}") from e
+        raise RuntimeError(f"Gemini API error {e.code}: {error_body}") from e
 
-    return _extract_openai_text(response_body) or "I could not generate a response."
+    return _extract_gemini_text(response_body) or "I could not generate a response."
 
 
 def handler(event, context):
@@ -94,7 +104,7 @@ def handler(event, context):
         if not sender:
             return {"statusCode": 400, "body": "Unknown sender"}
 
-        reply_text = _ask_openai(text)
+        reply_text = _ask_gemini(text)
         payload = {
             "type": "ai_message",
             "callsign": "AI Assistant",
@@ -110,8 +120,8 @@ def handler(event, context):
             "type": "ai_error",
             "callsign": "AI Assistant",
             "text": (
-                "AI is not available right now. Check that OPENAI_API_KEY is "
-                "configured for the Lambda function and that the OpenAI model is available."
+                "AI is not available right now. Check that GEMINI_API_KEY is "
+                "configured for the Lambda function and that the Gemini model is available."
             ),
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
