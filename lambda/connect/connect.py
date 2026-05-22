@@ -34,6 +34,41 @@ def handler(event, context):
                 'connectedAt': datetime.utcnow().isoformat() + "Z"
             }
         )
+        
+        # --- Broadcast 'user_joined' system message ---
+        domain_name = request_context.get('domainName')
+        stage = request_context.get('stage')
+        
+        if domain_name and stage:
+            endpoint_url = f"https://{domain_name}/{stage}"
+            apigw = boto3.client('apigatewaymanagementapi', endpoint_url=endpoint_url)
+            
+            payload = {
+                "type": "system",
+                "callsign": callsign,
+                "event": "user_joined",
+                "timestamp": datetime.utcnow().isoformat() + "Z"
+            }
+            
+            # Retrieve all active connections
+            connections_response = table.scan(ProjectionExpression="connectionId")
+            connections = connections_response.get('Items', [])
+            
+            for conn in connections:
+                target_id = conn['connectionId']
+                # Do not send the notification to the user who just joined
+                if target_id != connection_id:
+                    try:
+                        apigw.post_to_connection(
+                            ConnectionId=target_id,
+                            Data=json.dumps(payload).encode('utf-8')
+                        )
+                    except apigw.exceptions.GoneException:
+                        # Clean up stale connections
+                        table.delete_item(Key={'connectionId': target_id})
+                    except Exception as e:
+                        print(f"Failed to send to {target_id}: {e}")
+                        
         return {'statusCode': 200, 'body': 'Connected'}
     except Exception as e:
         print(f"Error saving connection: {e}")
