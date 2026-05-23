@@ -10,8 +10,8 @@ import boto3
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.environ["TABLE_NAME"])
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
 AI_SYSTEM_PROMPT = os.environ.get(
     "AI_SYSTEM_PROMPT",
     "You are a friendly, concise assistant inside a private anonymous chat. "
@@ -28,44 +28,28 @@ def _send_to_client(domain_name, stage, connection_id, payload):
     )
 
 
-def _extract_gemini_text(response_body):
-    text_parts = []
-    for candidate in response_body.get("candidates", []):
-        content = candidate.get("content", {})
-        for part in content.get("parts", []):
-            text = part.get("text")
-            if text:
-                text_parts.append(text)
-
-    return "\n".join(text_parts).strip()
-
-
-def _ask_gemini(user_text):
-    if not GEMINI_API_KEY:
-        raise RuntimeError("GEMINI_API_KEY is not configured")
-
+def _ask_ollama(user_text):
     request_body = {
-        "systemInstruction": {
-            "parts": [{"text": AI_SYSTEM_PROMPT}]
-        },
-        "contents": [
+        "model": OLLAMA_MODEL,
+        "stream": False,
+        "messages": [
+            {
+                "role": "system",
+                "content": AI_SYSTEM_PROMPT,
+            },
             {
                 "role": "user",
-                "parts": [{"text": user_text}],
+                "content": user_text,
             }
         ],
-        "generationConfig": {
-            "maxOutputTokens": 600,
+        "options": {
             "temperature": 0.6,
+            "num_predict": 600,
         },
     }
 
-    url = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
-    )
     request = urllib.request.Request(
-        url,
+        f"{OLLAMA_BASE_URL}/api/chat",
         data=json.dumps(request_body).encode("utf-8"),
         headers={
             "Content-Type": "application/json",
@@ -78,9 +62,12 @@ def _ask_gemini(user_text):
             response_body = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         error_body = e.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"Gemini API error {e.code}: {error_body}") from e
+        raise RuntimeError(f"Ollama API error {e.code}: {error_body}") from e
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"Ollama connection error: {e}") from e
 
-    return _extract_gemini_text(response_body) or "I could not generate a response."
+    message = response_body.get("message", {})
+    return message.get("content", "").strip() or "I could not generate a response."
 
 
 def handler(event, context):
@@ -104,7 +91,7 @@ def handler(event, context):
         if not sender:
             return {"statusCode": 400, "body": "Unknown sender"}
 
-        reply_text = _ask_gemini(text)
+        reply_text = _ask_ollama(text)
         payload = {
             "type": "ai_message",
             "callsign": "AI Assistant",
@@ -120,8 +107,8 @@ def handler(event, context):
             "type": "ai_error",
             "callsign": "AI Assistant",
             "text": (
-                "AI is not available right now. Check that GEMINI_API_KEY is "
-                "configured for the Lambda function and that the Gemini model is available."
+                "AI is not available right now. Check that OLLAMA_BASE_URL is reachable "
+                "from the Lambda function and that the Ollama model is available."
             ),
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }

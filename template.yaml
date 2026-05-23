@@ -3,15 +3,14 @@ Transform: AWS::Serverless-2016-10-31
 Description: Anonymous WebSocket Chat - Serverless Backend
 
 Parameters:
-  GeminiApiKey:
+  OllamaBaseUrl:
     Type: String
-    NoEcho: true
-    Default: ""
-    Description: Gemini API key used by the private AI chat Lambda.
-  GeminiModel:
+    Default: http://localhost:11434
+    Description: Public base URL for the Ollama server used by the private AI chat Lambda.
+  OllamaModel:
     Type: String
-    Default: gemini-2.5-flash-lite
-    Description: Gemini model ID used by the private AI chat Lambda.
+    Default: llama3.2
+    Description: Ollama model ID used by the private AI chat Lambda.
 
 Globals:
   Function:
@@ -21,8 +20,8 @@ Globals:
     Environment:
       Variables:
         TABLE_NAME: !Ref ConnectionsTable
-        GEMINI_API_KEY: !Ref GeminiApiKey
-        GEMINI_MODEL: !Ref GeminiModel
+        OLLAMA_BASE_URL: !Ref OllamaBaseUrl
+        OLLAMA_MODEL: !Ref OllamaModel
         AI_SYSTEM_PROMPT: "You are a friendly, concise AI assistant in a private anonymous chat. Always reply in Traditional Chinese used in Taiwan."
 
 Resources:
