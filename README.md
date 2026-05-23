@@ -187,3 +187,108 @@ npm run dev
 * **IAM 權限：** 若使用 AWS Learner Lab 環境，在執行 `sam deploy` 時，遇到 `Allow SAM CLI IAM role creation` 請選擇 **`n`**，以確保使用 Learner Lab 提供的 `LabRole`。
 
 ---
+
+## 使用 chat_ask_ai 功能前的本地設定
+
+`chat_ask_ai` 使用本機 Ollama 模型產生 AI 回覆，並透過 ngrok 將本機 Ollama API 暫時公開給 AWS Lambda 呼叫。因此，如果要測試 AI 私聊功能，請先完成以下步驟。
+
+### 1. 安裝 Ollama
+
+到 Ollama 官網下載並安裝：
+
+https://ollama.com/download
+
+安裝完成後，重新開啟 PowerShell，確認 Ollama 可用：
+
+```powershell
+ollama --version
+```
+
+在powershell中鍵入
+```powershell
+ollama pull llama3.2
+```
+確認模型安裝
+```powershell
+Invoke-RestMethod http://127.0.0.1:11434/api/tags
+```
+應該會看到類似 llama3.2:latest
+
+### 2. 安裝 ngrok
+安裝 ngrok：
+
+https://ngrok.com/download
+
+登入 ngrok 後，到 dashboard 取得 authtoken，並執行：
+```powershell
+ngrok config add-authtoken 你的_ngrok_token
+```
+
+若 ngrok 指令無法使用，請到 ngrok.exe 所在資料夾執行，例如：
+```powershell
+cd "$env:USERPROFILE\Downloads\ngrok-v3-stable-windows-amd64"
+.\ngrok.exe config add-authtoken 你的_ngrok_token
+```
+
+### 3.將本機 Ollama 公開給 AWS Lambda
+
+啟動 ngrok tunnel：
+```powershell
+ngrok http 11434 --host-header="localhost:11434"
+```
+
+成功後會看到類似：
+```powershell
+Forwarding  https://xxxx.ngrok-free.app -> http://localhost:11434
+```
+
+請複製這個 HTTPS URL (https://xxxx.ngrok-free.app)
+
+### 4.測試 ngrok URL 是否可連到 Ollama
+
+另開一個 PowerShell：
+```powershell
+Invoke-RestMethod `
+  -Headers @{ "ngrok-skip-browser-warning" = "true" } `
+  https://xxxx.ngrok-free.app/api/tags
+```
+
+### 5.部署後端時帶入 Ollama 參數
+
+```powershell
+sam build
+
+sam deploy --parameter-overrides `
+  OllamaBaseUrl="https://xxxx.ngrok-free.app" `
+  OllamaModel="llama3.2"
+```
+
+看到success就代表成功了！可以連 http://127.0.0.1:5173/Anonymous-WebSocket-Chat/ 試試看
+
+### 6.之後使用就是
+
+1.先確認 Ollama 正在跑
+```powershell
+Invoke-RestMethod http://127.0.0.1:11434/api/tags
+```
+
+2.開 ngrok
+```powershell
+ngrok http 11434 --host-header="localhost:11434"
+```
+
+3.複製 ngrok 顯示的 Forwarding URL，例如：
+```powershell
+https://xxxx.ngrok-free.app
+```
+
+4.測試 ngrok URL
+```powershell
+Invoke-RestMethod `
+  -Headers @{ "ngrok-skip-browser-warning" = "true" } `
+  https://xxxx.ngrok-free.app/api/tags
+```
+
+有看到 llama3.2:latest 就代表 ngrok 到 Ollama 是通的。
+
+但如果真的動不了就算了吧哈哈哈哈，不要動到ask_ai.py還有template.yaml裡面的AskAIFunction、AskAIRoute、AskAIIntegration、AskAIPermission就好
