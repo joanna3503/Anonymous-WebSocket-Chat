@@ -23,7 +23,7 @@ Globals:
         TABLE_NAME: !Ref ConnectionsTable
         GEMINI_API_KEY: !Ref GeminiApiKey
         GEMINI_MODEL: !Ref GeminiModel
-        AI_SYSTEM_PROMPT: "You are a friendly, concise AI assistant in a private anonymous chat."
+        AI_SYSTEM_PROMPT: "You are a friendly, concise AI assistant in a private anonymous chat. Always reply in Traditional Chinese used in Taiwan."
 
 Resources:
   # --- WebSocket API ---
