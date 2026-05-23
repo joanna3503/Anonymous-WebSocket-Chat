@@ -63,8 +63,13 @@ flowchart LR
 
 ```text
 .
-├── docs/               # 專案架構圖、API 規格與技術文件
+├── .github/workflows/  # CI/CD 自動化部屬腳本
 ├── frontend/           # 前端應用 (React + Vite + TypeScript)
+│   ├── src/
+│   │   ├── features/   # 延伸擴充功能模組
+│   │   ├── test/       # Vitest 自動化整合測試單元
+│   │   └── App.tsx     # 前端核心邏輯與連線調度
+│   └── index.html
 ├── lambda/             # 後端 Lambda 程式碼
 │   ├── connect/        # 連線處理邏輯與入室廣播
 │   ├── disconnect/     # 中斷連線處理邏輯與退室廣播
@@ -72,7 +77,7 @@ flowchart LR
 │   └── read_message/   # 已讀回執處理邏輯
 ├── template.yaml       # AWS SAM 基礎設施藍圖
 ├── samconfig.toml      # SAM 部署設定檔
-├── .gitignore          # 忽略清單 (已包含 .aws-sam/)
+├── .gitignore          # 忽略清單 (自動忽略 .aws-sam/ 編譯產物)
 └── README.md
 ```
 

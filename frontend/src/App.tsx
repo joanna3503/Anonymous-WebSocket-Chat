@@ -215,7 +215,7 @@ function App() {
       <header className="header">
         <div className="header-title">
           <div className="header-icon">
-            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>science</span>
+            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>forum</span>
           </div>
           <span style={{ color: 'var(--text-slate-900)' }}>Anonymous <span style={{ color: 'var(--corporate-blue)', fontWeight: 400 }}>Chat</span></span>
         </div>
